@@ -27,7 +27,7 @@ func main() {
 
 func showTermUI() {
 	app := newApplication()
-	app.showTable()
+	app.layout()
 	err := app.run()
 	if err != nil {
 		slog.Error("error to run application")
