@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 var defaultStorage = Storage{}
@@ -30,21 +31,44 @@ func (s *Storage) init() error {
 }
 
 func (s *Storage) readConfig() ([]Entry, error) {
-	data, err := os.ReadFile(s.configPath)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		slog.With(slog.String("err", err.Error())).Error("error to read config file")
-		return nil, err
-	}
-	var objs []Entry
-	err = json.Unmarshal(data, &objs)
-	if err != nil {
-		slog.With(slog.String("err", err.Error())).Error("error to parse config")
-		return nil, err
-	}
-	return objs, nil
+	return []Entry{
+		{
+			Name:     "hkg test",
+			Seed:     "192837523",
+			Desc:     "hkg prod ",
+			Order:    1,
+			CreateAt: time.Now(),
+		},
+		{
+			Name:     "bkk test",
+			Seed:     "29384345",
+			Desc:     "hkg prod ",
+			Order:    2,
+			CreateAt: time.Now(),
+		},
+		{
+			Name:     "tyo test",
+			Seed:     "34761924",
+			Desc:     "hkg prod ",
+			Order:    3,
+			CreateAt: time.Now(),
+		},
+	}, nil
+	//data, err := os.ReadFile(s.configPath)
+	//if os.IsNotExist(err) {
+	//	return nil, nil
+	//}
+	//if err != nil {
+	//	slog.With(slog.String("err", err.Error())).Error("error to read config file")
+	//	return nil, err
+	//}
+	//var objs []Entry
+	//err = json.Unmarshal(data, &objs)
+	//if err != nil {
+	//	slog.With(slog.String("err", err.Error())).Error("error to parse config")
+	//	return nil, err
+	//}
+	//return objs, nil
 }
 
 func (s *Storage) saveConfig(objs []Entry) error {

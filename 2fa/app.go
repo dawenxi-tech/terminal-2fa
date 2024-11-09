@@ -10,6 +10,7 @@ import (
 type Application struct {
 	term  *tview.Application
 	table *tview.Table
+	pager *tview.Pages
 }
 
 func newApplication() *Application {
@@ -29,41 +30,65 @@ func (app *Application) run() error {
 
 func (app *Application) layout() error {
 	newPrimitive := func(text string) tview.Primitive {
-		return tview.NewTextView().
+		view := tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetText(text)
+		view.SetBackgroundColor(tcell.ColorDefault)
+		return view
 	}
 	err := app.renderTable()
 	if err != nil {
 		return err
 	}
 
-	//grid := tview.NewGrid().
-	//	SetRows(2).
-	//	SetColumns(1).
-	//	AddItem(newPrimitive("Header"), 0, 0, 1, 3, 0, 0, false).
-	//	AddItem(newPrimitive("Footer"), 2, 0, 1, 3, 0, 0, false)
+	info := app.helpMessage()
 
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(newPrimitive("2FA"), 1, 1, false).
-		AddItem(tview.NewFlex().
-			AddItem(tview.NewButton("Add"), 0, 1, false).
-			AddItem(tview.NewButton("Delete"), 0, 1, false),
-			1, 1, false).
-		AddItem(app.table, 0, 100, false)
-	//AddItem(tview.NewBox(), 0, 1, false)
+		AddItem(app.table, 0, 100, true).
+		AddItem(info, 1, 1, false)
 
-	app.term.SetRoot(flex, true)
-	app.term.SetFocus(flex)
+	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyRune && event.Rune() == 'q' {
+			app.term.Stop()
+		}
+		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
+			//fmt.Println("show input page")
+			app.pager.ShowPage("infobox")
+		}
+		return event
+	})
+
+	box := tview.NewInputField()
+
+	infobox := tview.NewModal().
+		AddButtons([]string{"Quit", "Cancel"}).
+		SetText("Lorem Ipsum Is A Pain")
+
+	page := tview.NewPages()
+	app.pager = page
+	page.AddPage("home", flex, true, true)
+	page.AddPage("input", box, false, true)
+	page.AddPage("infobox", infobox, false, false)
+
+	app.term.SetRoot(page, true)
+	app.term.SetFocus(page)
 	return nil
 }
 
 func (app *Application) renderTable() error {
-	app.table = tview.NewTable()
-	app.table.SetBackgroundColor(tcell.ColorDefault)
-	app.table.SetEvaluateAllRows(true)
-	app.table.SetTitle("2FA")
-	app.table.SetBorders(true)
+	table := tview.NewTable()
+	app.table = table
+	table.SetBackgroundColor(tcell.ColorDefault)
+	table.SetEvaluateAllRows(true)
+	table.SetTitle("2FA")
+	table.SetBorders(true)
+	table.SetSelectable(true, false)
+	table.SetBorderPadding(0, 0, 0, 0)
+	table.SetSelectedStyle(tcell.Style{}.Background(tcell.ColorGreen))
+	table.SetSelectedFunc(func(row, column int) {
+		table.GetCell(row, column).SetBackgroundColor(tcell.ColorDefault)
+	})
 	objs, err := defaultStorage.readConfig()
 	if err != nil {
 		slog.With(slog.String("err", err.Error())).Error("error to read config")
@@ -78,29 +103,29 @@ func (app *Application) renderTable() error {
 		var col int
 		cell := tview.NewTableCell(strconv.Itoa(i + 1)).SetExpansion(100)
 		cell.SetAlign(tview.AlignCenter)
-		app.table.SetCell(i+1, col, cell)
+		table.SetCell(i+1, col, cell)
 		// name
 		col++
 		nameCell := tview.NewTableCell(obj.Name).SetExpansion(500)
 		nameCell.SetAlign(tview.AlignCenter)
-		app.table.SetCell(i+1, col, nameCell)
+		table.SetCell(i+1, col, nameCell)
 		// code
 		col++
 		codeCell := tview.NewTableCell("000000").SetExpansion(500)
 		codeCell.SetAlign(tview.AlignCenter)
-		app.table.SetCell(i+1, col, codeCell)
+		table.SetCell(i+1, col, codeCell)
 
 		// create
 		col++
 		createCell := tview.NewTableCell("2006-01-02 15:04:05").SetExpansion(500)
 		createCell.SetAlign(tview.AlignCenter)
-		app.table.SetCell(i+1, col, createCell)
+		table.SetCell(i+1, col, createCell)
 
 		// action
 		col++
 		actionCell := tview.NewTableCell("delete, edit").SetExpansion(500)
 		actionCell.SetAlign(tview.AlignCenter)
-		app.table.SetCell(i+1, col, actionCell)
+		table.SetCell(i+1, col, actionCell)
 	}
 
 	//app.term.SetRoot(app.table, true)
@@ -113,27 +138,38 @@ func (app *Application) buildTableHeader() {
 	var col int
 	cell := tview.NewTableCell("#").SetExpansion(100)
 	cell.SetAlign(tview.AlignCenter)
+	cell.NotSelectable = true
 	app.table.SetCell(0, col, cell)
 	// name
 	col++
 	nameCell := tview.NewTableCell("Name").SetExpansion(500)
 	nameCell.SetAlign(tview.AlignCenter)
+	nameCell.NotSelectable = true
 	app.table.SetCell(0, col, nameCell)
 	// code
 	col++
 	codeCell := tview.NewTableCell("Code").SetExpansion(500)
 	codeCell.SetAlign(tview.AlignCenter)
+	codeCell.NotSelectable = true
 	app.table.SetCell(0, col, codeCell)
 
 	// create
 	col++
 	createCell := tview.NewTableCell("Create Time").SetExpansion(500)
 	createCell.SetAlign(tview.AlignCenter)
+	createCell.NotSelectable = true
 	app.table.SetCell(0, col, createCell)
 
 	// action
 	col++
 	actionCell := tview.NewTableCell("Action").SetExpansion(500)
 	actionCell.SetAlign(tview.AlignCenter)
+	actionCell.NotSelectable = true
 	app.table.SetCell(0, col, actionCell)
+}
+
+func (app *Application) helpMessage() tview.Primitive {
+	tv := tview.NewTextView().SetText(`A: Add; E: Edit; D: Delete; +: Move Up; -: Move Down; Q: Quit`)
+	tv.SetBackgroundColor(tcell.ColorDefault)
+	return tv
 }
