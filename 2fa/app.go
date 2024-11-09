@@ -10,12 +10,19 @@ import (
 type Application struct {
 	term  *tview.Application
 	table *tview.Table
-	pager *tview.Pages
+	pages *tview.Pages
+
+	inputDialog   *InputDialog
+	confirmDialog *tview.Modal
 }
 
 func newApplication() *Application {
 	app := &Application{
-		term: tview.NewApplication().EnableMouse(true),
+		term:          tview.NewApplication(),
+		table:         tview.NewTable(),
+		pages:         tview.NewPages(),
+		inputDialog:   newInputDialog(""),
+		confirmDialog: tview.NewModal(),
 	}
 	return app
 }
@@ -36,10 +43,11 @@ func (app *Application) layout() error {
 		view.SetBackgroundColor(tcell.ColorDefault)
 		return view
 	}
-	err := app.renderTable()
+	err := app.configTable()
 	if err != nil {
 		return err
 	}
+	app.configureAddDialog()
 
 	info := app.helpMessage()
 
@@ -52,47 +60,50 @@ func (app *Application) layout() error {
 		if event.Key() == tcell.KeyRune && event.Rune() == 'q' {
 			app.term.Stop()
 		}
+		if event.Key() == tcell.KeyRune && event.Rune() == 'a' {
+			//fmt.Println("show input page")
+			app.inputDialog.clear()
+			app.inputDialog.setTitle("ADD")
+			app.pages.ShowPage("inputDialog")
+			app.term.EnableMouse(true)
+		}
 		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
 			//fmt.Println("show input page")
-			app.pager.ShowPage("infobox")
+			app.pages.ShowPage("inputDialog")
+			app.inputDialog.clear()
+			app.inputDialog.setTitle("ADD")
+			app.term.EnableMouse(true)
 		}
 		return event
 	})
 
-	modalFn := func(p tview.Primitive, width, height int) tview.Primitive {
-		return tview.NewFlex().
-			AddItem(nil, 0, 1, false).
-			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-				AddItem(nil, 0, 1, false).
-				AddItem(p, height, 1, true).
-				AddItem(nil, 0, 1, false), width, 1, true).
-			AddItem(nil, 0, 1, false)
-	}
+	//mod := modalFn(input, 40, 8)
 
-	input := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(tview.NewTextView().SetText("Name"), 1, 1, false).
-		AddItem(tview.NewInputField(), 1, 1, true).
-		AddItem(tview.NewBox(), 1, 1, true).
-		AddItem(tview.NewTextView().SetText("Code"), 1, 1, false).
-		AddItem(tview.NewInputField(), 1, 1, false)
-	input.SetTitle("Add")
-	input.SetBorder(true)
-
-	mod := modalFn(input, 40, 8)
-
-	page := tview.NewPages()
-	app.pager = page
+	page := app.pages
 	page.AddPage("home", flex, true, true)
-	page.AddPage("input", mod, true, false)
+	page.AddPage("inputDialog", app.inputDialog.getModal(), true, false)
+	page.AddPage("deleteDialog", app.confirmDialog, true, false)
 
 	app.term.SetRoot(page, true)
 	app.term.SetFocus(page)
 	return nil
 }
 
-func (app *Application) renderTable() error {
-	table := tview.NewTable()
-	app.table = table
+func (app *Application) configureAddDialog() {
+	app.inputDialog.nameField.SetDoneFunc(func(key tcell.Key) {
+		switch key {
+		case tcell.KeyEnter:
+			//name, code := app.inputDialog.values()
+			app.term.EnableMouse(false)
+		case tcell.KeyEsc:
+			app.pages.HidePage("addDialog")
+			app.term.EnableMouse(false)
+		}
+	})
+}
+
+func (app *Application) configTable() error {
+	table := app.table
 	table.SetBackgroundColor(tcell.ColorDefault)
 	table.SetEvaluateAllRows(true)
 	table.SetTitle("2FA")
@@ -108,78 +119,44 @@ func (app *Application) renderTable() error {
 		slog.With(slog.String("err", err.Error())).Error("error to read config")
 		return err
 	}
-
 	// build header
 	app.buildTableHeader()
+
+	addCell := func(txt string, row int, col int, exp int) {
+		cell := tview.NewTableCell(txt).SetExpansion(exp)
+		cell.SetAlign(tview.AlignCenter)
+		table.SetCell(row, col, cell)
+	}
 
 	for i, obj := range objs {
 		// index
 		var col int
-		cell := tview.NewTableCell(strconv.Itoa(i + 1)).SetExpansion(100)
-		cell.SetAlign(tview.AlignCenter)
-		table.SetCell(i+1, col, cell)
+		addCell(strconv.Itoa(i+1), i+1, col, 100)
 		// name
 		col++
-		nameCell := tview.NewTableCell(obj.Name).SetExpansion(500)
-		nameCell.SetAlign(tview.AlignCenter)
-		table.SetCell(i+1, col, nameCell)
+		addCell(obj.Name, i+1, col, 500)
 		// code
 		col++
-		codeCell := tview.NewTableCell("000000").SetExpansion(500)
-		codeCell.SetAlign(tview.AlignCenter)
-		table.SetCell(i+1, col, codeCell)
-
-		// create
-		col++
-		createCell := tview.NewTableCell("2006-01-02 15:04:05").SetExpansion(500)
-		createCell.SetAlign(tview.AlignCenter)
-		table.SetCell(i+1, col, createCell)
-
-		// action
-		col++
-		actionCell := tview.NewTableCell("delete, edit").SetExpansion(500)
-		actionCell.SetAlign(tview.AlignCenter)
-		table.SetCell(i+1, col, actionCell)
+		addCell("000000", i+1, col, 500)
 	}
-
-	//app.term.SetRoot(app.table, true)
-	//app.term.SetFocus(app.table)
-	//app.term.Draw()
 	return nil
 }
 
 func (app *Application) buildTableHeader() {
+	addCell := func(txt string, col int) {
+		cell := tview.NewTableCell(txt).SetExpansion(100)
+		cell.SetAlign(tview.AlignCenter)
+		cell.NotSelectable = true
+		app.table.SetCell(0, col, cell)
+	}
 	var col int
-	cell := tview.NewTableCell("#").SetExpansion(100)
-	cell.SetAlign(tview.AlignCenter)
-	cell.NotSelectable = true
-	app.table.SetCell(0, col, cell)
+	addCell("#", col)
 	// name
 	col++
-	nameCell := tview.NewTableCell("Name").SetExpansion(500)
-	nameCell.SetAlign(tview.AlignCenter)
-	nameCell.NotSelectable = true
-	app.table.SetCell(0, col, nameCell)
+	addCell("Name", col)
 	// code
 	col++
-	codeCell := tview.NewTableCell("Code").SetExpansion(500)
-	codeCell.SetAlign(tview.AlignCenter)
-	codeCell.NotSelectable = true
-	app.table.SetCell(0, col, codeCell)
-
-	// create
-	col++
-	createCell := tview.NewTableCell("Create Time").SetExpansion(500)
-	createCell.SetAlign(tview.AlignCenter)
-	createCell.NotSelectable = true
-	app.table.SetCell(0, col, createCell)
-
-	// action
-	col++
-	actionCell := tview.NewTableCell("Action").SetExpansion(500)
-	actionCell.SetAlign(tview.AlignCenter)
-	actionCell.NotSelectable = true
-	app.table.SetCell(0, col, actionCell)
+	addCell("Code", col)
 }
 
 func (app *Application) helpMessage() tview.Primitive {
