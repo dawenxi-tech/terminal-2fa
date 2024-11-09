@@ -57,22 +57,8 @@ func (app *Application) layout() error {
 		AddItem(info, 1, 1, false)
 
 	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune && event.Rune() == 'q' {
-			app.term.Stop()
-		}
-		if event.Key() == tcell.KeyRune && event.Rune() == 'a' {
-			//fmt.Println("show input page")
-			app.inputDialog.clear()
-			app.inputDialog.setTitle("ADD")
-			app.pages.ShowPage("inputDialog")
-			app.term.EnableMouse(true)
-		}
-		if event.Key() == tcell.KeyRune && event.Rune() == 'e' {
-			//fmt.Println("show input page")
-			app.pages.ShowPage("inputDialog")
-			app.inputDialog.clear()
-			app.inputDialog.setTitle("ADD")
-			app.term.EnableMouse(true)
+		if event.Key() == tcell.KeyRune {
+			app.handleKeyPressed(event.Rune())
 		}
 		return event
 	})
@@ -87,6 +73,24 @@ func (app *Application) layout() error {
 	app.term.SetRoot(page, true)
 	app.term.SetFocus(page)
 	return nil
+}
+
+func (app *Application) handleKeyPressed(r rune) {
+	switch r {
+	case 'q':
+		app.term.Stop()
+	case 'a':
+		app.inputDialog.clear()
+		app.inputDialog.setTitle("ADD")
+		app.pages.ShowPage("inputDialog")
+		app.term.EnableMouse(true)
+
+	case 'e':
+		app.inputDialog.clear()
+		app.inputDialog.setTitle("ADD")
+		app.pages.ShowPage("inputDialog")
+		app.term.EnableMouse(true)
+	}
 }
 
 func (app *Application) configureAddDialog() {

@@ -38,7 +38,7 @@ func (dialog *InputDialog) getModal() tview.Primitive {
 	if dialog.modal != nil {
 		return dialog.modal
 	}
-	dialog.modal = buildModal(dialog.modal, 40, 8)
+	dialog.modal = buildModal(dialog.view, 40, 8)
 	return dialog.modal
 }
 
