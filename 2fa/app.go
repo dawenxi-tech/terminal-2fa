@@ -94,16 +94,16 @@ func (app *Application) handleKeyPressed(r rune) {
 }
 
 func (app *Application) configureAddDialog() {
-	app.inputDialog.nameField.SetDoneFunc(func(key tcell.Key) {
-		switch key {
-		case tcell.KeyEnter:
-			//name, code := app.inputDialog.values()
-			app.term.EnableMouse(false)
-		case tcell.KeyEsc:
-			app.pages.HidePage("addDialog")
-			app.term.EnableMouse(false)
-		}
-	})
+	//app.inputDialog.nameField.SetDoneFunc(func(key tcell.Key) {
+	//	switch key {
+	//	case tcell.KeyEnter:
+	//		//name, code := app.inputDialog.values()
+	//		app.term.EnableMouse(false)
+	//	case tcell.KeyEsc:
+	//		app.pages.HidePage("addDialog")
+	//		app.term.EnableMouse(false)
+	//	}
+	//})
 }
 
 func (app *Application) configTable() error {
