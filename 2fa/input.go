@@ -20,6 +20,9 @@ type InputDialog struct {
 	nameField *tview.InputField
 	codeField *tview.InputField
 
+	onSubmit func(name, code string)
+	onCancel func()
+
 	view  *tview.Flex
 	modal tview.Primitive
 }
@@ -31,6 +34,12 @@ func newInputDialog(title string) *InputDialog {
 		codeField: tview.NewInputField(),
 	}
 	dialog.layout()
+	dialog.nameField.SetDoneFunc(func(key tcell.Key) {
+		dialog.onKeyPress(dialog.nameField, key)
+	})
+	dialog.codeField.SetDoneFunc(func(key tcell.Key) {
+		dialog.onKeyPress(dialog.codeField, key)
+	})
 	return dialog
 }
 
@@ -44,6 +53,20 @@ func (dialog *InputDialog) getModal() tview.Primitive {
 
 func (dialog *InputDialog) setTitle(title string) {
 	dialog.view.SetTitle(title)
+}
+
+func (dialog *InputDialog) onKeyPress(field *tview.InputField, key tcell.Key) {
+	switch key {
+	case tcell.KeyEsc:
+		if dialog.onCancel != nil {
+			dialog.onCancel()
+		}
+	case tcell.KeyEnter:
+		if dialog.onSubmit != nil {
+			name, code := dialog.values()
+			dialog.onSubmit(name, code)
+		}
+	}
 }
 
 func (dialog *InputDialog) clear() {
