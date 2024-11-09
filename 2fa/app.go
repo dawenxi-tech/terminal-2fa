@@ -15,7 +15,7 @@ type Application struct {
 
 func newApplication() *Application {
 	app := &Application{
-		term: tview.NewApplication().EnableMouse(false),
+		term: tview.NewApplication().EnableMouse(true),
 	}
 	return app
 }
@@ -59,17 +59,31 @@ func (app *Application) layout() error {
 		return event
 	})
 
-	box := tview.NewInputField()
+	modalFn := func(p tview.Primitive, width, height int) tview.Primitive {
+		return tview.NewFlex().
+			AddItem(nil, 0, 1, false).
+			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+				AddItem(nil, 0, 1, false).
+				AddItem(p, height, 1, true).
+				AddItem(nil, 0, 1, false), width, 1, true).
+			AddItem(nil, 0, 1, false)
+	}
 
-	infobox := tview.NewModal().
-		AddButtons([]string{"Quit", "Cancel"}).
-		SetText("Lorem Ipsum Is A Pain")
+	input := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tview.NewTextView().SetText("Name"), 1, 1, false).
+		AddItem(tview.NewInputField(), 1, 1, true).
+		AddItem(tview.NewBox(), 1, 1, true).
+		AddItem(tview.NewTextView().SetText("Code"), 1, 1, false).
+		AddItem(tview.NewInputField(), 1, 1, false)
+	input.SetTitle("Add")
+	input.SetBorder(true)
+
+	mod := modalFn(input, 40, 8)
 
 	page := tview.NewPages()
 	app.pager = page
 	page.AddPage("home", flex, true, true)
-	page.AddPage("input", box, false, true)
-	page.AddPage("infobox", infobox, false, false)
+	page.AddPage("input", mod, true, false)
 
 	app.term.SetRoot(page, true)
 	app.term.SetFocus(page)
