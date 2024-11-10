@@ -148,13 +148,14 @@ func (app *Application) showDeleteDialog() {
 		AddButtons([]string{"Cancel", "Delete"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		switch buttonLabel {
 		case "Delete":
-			records = append(records[:row-1], records[row:]...)
+			records = append(records[:row], records[row+1:]...)
 			_ = defaultStorage.saveConfig(records)
+			app.reloadTable()
+			app.table.Select(row, 0)
 		case "Cancel":
 		}
 		app.pages.HidePage("deleteDialog")
 		app.term.EnableMouse(false)
-		app.reloadTable()
 	})
 	app.pages.ShowPage("deleteDialog")
 	app.term.EnableMouse(true)

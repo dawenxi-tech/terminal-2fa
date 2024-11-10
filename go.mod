@@ -9,13 +9,17 @@ require (
 )
 
 require (
+	github.com/dim13/otpauth v0.5.2 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/google/uuid v1.5.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/xlzd/gotp v0.1.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 )
