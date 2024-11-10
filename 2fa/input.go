@@ -73,6 +73,10 @@ func (dialog *InputDialog) layoutForm() {
 		dialog.model.name = text
 	}).AddInputField("Code", "", 36, nil, func(text string) {
 		dialog.model.code = text
+	}).AddButton("Cancel", func() {
+		if dialog.onCancel != nil {
+			dialog.onCancel()
+		}
 	}).AddButton("Save", func() {
 		name, code := dialog.values()
 		if name == "" || code == "" {
@@ -80,10 +84,6 @@ func (dialog *InputDialog) layoutForm() {
 		}
 		if dialog.onSubmit != nil {
 			dialog.onSubmit(dialog.model.id, name, code)
-		}
-	}).AddButton("Cancel", func() {
-		if dialog.onCancel != nil {
-			dialog.onCancel()
 		}
 	})
 	form.SetBorder(true)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"log/slog"
@@ -121,12 +122,41 @@ func (app *Application) handleKeyPressed(r rune) {
 		_ = defaultStorage.saveConfig(records)
 		app.reloadTable()
 		app.table.Select(row+2, 0)
+	case 'd':
+		app.showDeleteDialog()
 	}
 }
 
 func (app *Application) reloadTable() {
 	app.table.Clear()
 	_ = app.configTable()
+}
+
+func (app *Application) showDeleteDialog() {
+	row, _ := app.table.GetSelection()
+	row = row - 1
+	records, _ := defaultStorage.readConfig()
+	if row < 0 || row >= len(records) {
+		return
+	}
+	record := records[row]
+	msg := fmt.Sprintf("Are you sure you want to delete \"%s\"?", record.Name)
+	app.confirmDialog.SetText(msg)
+	app.confirmDialog.
+		ClearButtons().
+		AddButtons([]string{"Cancel", "Delete"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		switch buttonLabel {
+		case "Delete":
+			records = append(records[:row-1], records[row:]...)
+			_ = defaultStorage.saveConfig(records)
+		case "Cancel":
+		}
+		app.pages.HidePage("deleteDialog")
+		app.term.EnableMouse(false)
+		app.reloadTable()
+	})
+	app.pages.ShowPage("deleteDialog")
+	app.term.EnableMouse(true)
 }
 
 func (app *Application) configTable() error {
