@@ -54,6 +54,8 @@ func (dialog *InputDialog) clear() {
 }
 
 func (dialog *InputDialog) values() (name string, code string) {
+	name = dialog.model.name
+	code = dialog.model.code
 	return
 }
 

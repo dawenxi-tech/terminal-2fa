@@ -40,7 +40,6 @@ func (app *Application) run() error {
 }
 
 func (app *Application) layout() error {
-
 	err := app.configTable()
 	if err != nil {
 		return err
@@ -170,8 +169,8 @@ func (app *Application) dismissInputDialog() {
 
 func (app *Application) onSaveInput(id string, name, code string) {
 	app.dismissInputDialog()
+	records, _ := defaultStorage.readConfig()
 	if id != "" {
-		records, _ := defaultStorage.readConfig()
 		for i, record := range records {
 			if record.ID == id {
 				records[i].Name = name
@@ -179,9 +178,7 @@ func (app *Application) onSaveInput(id string, name, code string) {
 				break
 			}
 		}
-		_ = defaultStorage.saveConfig(records)
 	} else {
-		records, _ := defaultStorage.readConfig()
 		records = append(records, Entry{
 			ID:       fmt.Sprintf("%d", time.Now().UnixNano()),
 			Name:     name,
@@ -190,6 +187,8 @@ func (app *Application) onSaveInput(id string, name, code string) {
 			CreateAt: time.Now(),
 		})
 	}
+	_ = defaultStorage.saveConfig(records)
+	app.reloadTable()
 }
 
 func newPrimitive(text string) tview.Primitive {
