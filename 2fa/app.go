@@ -75,8 +75,10 @@ func (app *Application) handleKeyPressed(r rune) {
 		app.inputDialog.setTitle("ADD")
 		app.pages.ShowPage("inputDialog")
 		app.term.EnableMouse(true)
+		app.inputDialog.focus()
 	case 'e':
 		row, _ := app.table.GetSelection()
+		row = row - 1
 		records, _ := defaultStorage.readConfig()
 		if row < 0 || row >= len(records) {
 			return
@@ -86,6 +88,7 @@ func (app *Application) handleKeyPressed(r rune) {
 		app.pages.ShowPage("inputDialog")
 		app.term.EnableMouse(true)
 		app.inputDialog.update(id, name, code)
+		app.inputDialog.focus()
 	}
 }
 

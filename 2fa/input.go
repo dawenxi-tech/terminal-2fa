@@ -60,7 +60,7 @@ func (dialog *InputDialog) values() (name string, code string) {
 }
 
 func (dialog *InputDialog) update(id string, name string, code string) {
-	dialog.model.name = id
+	dialog.model.id = id
 	dialog.model.name = name
 	dialog.model.code = code
 	dialog.form.GetFormItemByLabel("Name").(*tview.InputField).SetText(name)
@@ -89,4 +89,8 @@ func (dialog *InputDialog) layoutForm() {
 	form.SetBorder(true)
 	form.SetTitle(dialog.title)
 	form.SetButtonsAlign(tview.AlignCenter)
+}
+
+func (dialog *InputDialog) focus() {
+	dialog.form.SetFocus(0)
 }
