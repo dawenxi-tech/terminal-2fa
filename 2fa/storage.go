@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 var defaultStorage = Storage{}
@@ -44,6 +45,9 @@ func (s *Storage) readConfig() ([]Entry, error) {
 		slog.With(slog.String("err", err.Error())).Error("error to parse config")
 		return nil, err
 	}
+	sort.Slice(objs, func(i, j int) bool {
+		return objs[i].Order < objs[j].Order
+	})
 	return objs, nil
 }
 

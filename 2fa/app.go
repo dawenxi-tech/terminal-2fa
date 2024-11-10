@@ -13,6 +13,8 @@ type Application struct {
 	table *tview.Table
 	pages *tview.Pages
 
+	manual *tview.TextView
+
 	inputDialog   *InputDialog
 	confirmDialog *tview.Modal
 }
@@ -22,7 +24,7 @@ func newApplication() *Application {
 		term:          tview.NewApplication(),
 		table:         tview.NewTable(),
 		pages:         tview.NewPages(),
-		inputDialog:   newInputDialog("Update"),
+		inputDialog:   newInputDialog(""),
 		confirmDialog: tview.NewModal(),
 	}
 	app.inputDialog.onCancel = app.onCancelInput
@@ -54,7 +56,7 @@ func (app *Application) layout() error {
 			app.handleKeyPressed(event.Rune())
 		}
 		if event.Key() == tcell.KeyESC {
-			app.term.Stop()
+			app.exit()
 		}
 		return event
 	})
@@ -68,10 +70,14 @@ func (app *Application) layout() error {
 	return nil
 }
 
+func (app *Application) exit() {
+	app.term.Stop()
+}
+
 func (app *Application) handleKeyPressed(r rune) {
 	switch r {
 	case 'q':
-		app.term.Stop()
+		app.exit()
 	case 'a':
 		app.inputDialog.clear()
 		app.inputDialog.setTitle("ADD")
@@ -91,6 +97,30 @@ func (app *Application) handleKeyPressed(r rune) {
 		app.term.EnableMouse(true)
 		app.inputDialog.update(id, name, code)
 		app.inputDialog.focus()
+	case '+':
+		// move up
+		row, _ := app.table.GetSelection()
+		row = row - 1
+		records, _ := defaultStorage.readConfig()
+		if row <= 0 || row >= len(records) {
+			return
+		}
+		records[row].Order, records[row-1].Order = records[row-1].Order, records[row].Order
+		_ = defaultStorage.saveConfig(records)
+		app.reloadTable()
+		app.table.Select(row, 0)
+	case '-':
+		// move down
+		row, _ := app.table.GetSelection()
+		row = row - 1
+		records, _ := defaultStorage.readConfig()
+		if row < 0 || row >= len(records)-1 {
+			return
+		}
+		records[row].Order, records[row+1].Order = records[row+1].Order, records[row].Order
+		_ = defaultStorage.saveConfig(records)
+		app.reloadTable()
+		app.table.Select(row+2, 0)
 	}
 }
 
@@ -159,6 +189,7 @@ func (app *Application) buildTableHeader() {
 func (app *Application) helpMessage() tview.Primitive {
 	tv := tview.NewTextView().SetText(`A: Add; E: Edit; D: Delete; +: Move Up; -: Move Down; Q: Quit`)
 	tv.SetBackgroundColor(tcell.ColorDefault)
+	app.manual = tv
 	return tv
 }
 
