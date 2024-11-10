@@ -5,24 +5,13 @@ import (
 	"github.com/rivo/tview"
 )
 
-func buildModal(pri tview.Primitive, width, height int) tview.Primitive {
-	return tview.NewFlex().
-		AddItem(nil, 0, 1, false).
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 1, false).
-			AddItem(pri, height, 1, true).
-			AddItem(nil, 0, 1, false), width, 1, true).
-		AddItem(nil, 0, 1, false)
-}
-
 type InputDialog struct {
 	title    string
 	form     *tview.Form
 	onSubmit func(name, code string)
 	onCancel func()
 
-	//view  *tview.Flex
-	modal tview.Primitive
+	*Dialog
 }
 
 func newInputDialog(title string) *InputDialog {
@@ -35,10 +24,10 @@ func newInputDialog(title string) *InputDialog {
 }
 
 func (dialog *InputDialog) getModal() tview.Primitive {
-	if dialog.modal != nil {
+	if dialog.Dialog != nil {
 		return dialog.modal
 	}
-	dialog.modal = buildModal(dialog.form, 46, 9)
+	dialog.Dialog = NewDialog(dialog.form, 50, 10)
 	return dialog.modal
 }
 
