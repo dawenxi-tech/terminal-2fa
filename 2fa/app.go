@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"log/slog"
 	"strconv"
+	"time"
 )
 
 type Application struct {
@@ -21,9 +23,11 @@ func newApplication() *Application {
 		term:          tview.NewApplication(),
 		table:         tview.NewTable(),
 		pages:         tview.NewPages(),
-		inputDialog:   newInputDialog(""),
+		inputDialog:   newInputDialog("Update"),
 		confirmDialog: tview.NewModal(),
 	}
+	app.inputDialog.onCancel = app.onCancelInput
+	app.inputDialog.onSubmit = app.onSaveInput
 	return app
 }
 
@@ -36,21 +40,12 @@ func (app *Application) run() error {
 }
 
 func (app *Application) layout() error {
-	newPrimitive := func(text string) tview.Primitive {
-		view := tview.NewTextView().
-			SetTextAlign(tview.AlignCenter).
-			SetText(text)
-		view.SetBackgroundColor(tcell.ColorDefault)
-		return view
-	}
+
 	err := app.configTable()
 	if err != nil {
 		return err
 	}
-	app.configureAddDialog()
-
 	info := app.helpMessage()
-
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(newPrimitive("2FA"), 1, 1, false).
 		AddItem(app.table, 0, 100, true).
@@ -62,9 +57,6 @@ func (app *Application) layout() error {
 		}
 		return event
 	})
-
-	//mod := modalFn(input, 40, 8)
-
 	page := app.pages
 	page.AddPage("home", flex, true, true)
 	page.AddPage("inputDialog", app.inputDialog.getModal(), true, false)
@@ -84,26 +76,23 @@ func (app *Application) handleKeyPressed(r rune) {
 		app.inputDialog.setTitle("ADD")
 		app.pages.ShowPage("inputDialog")
 		app.term.EnableMouse(true)
-
 	case 'e':
-		app.inputDialog.clear()
-		app.inputDialog.setTitle("ADD")
+		row, _ := app.table.GetSelection()
+		records, _ := defaultStorage.readConfig()
+		if row < 0 || row >= len(records) {
+			return
+		}
+		id, name, code := records[row].ID, records[row].Name, records[row].Seed
+		app.inputDialog.setTitle("EDIT")
 		app.pages.ShowPage("inputDialog")
 		app.term.EnableMouse(true)
+		app.inputDialog.update(id, name, code)
 	}
 }
 
-func (app *Application) configureAddDialog() {
-	//app.inputDialog.nameField.SetDoneFunc(func(key tcell.Key) {
-	//	switch key {
-	//	case tcell.KeyEnter:
-	//		//name, code := app.inputDialog.values()
-	//		app.term.EnableMouse(false)
-	//	case tcell.KeyEsc:
-	//		app.pages.HidePage("addDialog")
-	//		app.term.EnableMouse(false)
-	//	}
-	//})
+func (app *Application) reloadTable() {
+	app.table.Clear()
+	_ = app.configTable()
 }
 
 func (app *Application) configTable() error {
@@ -167,4 +156,46 @@ func (app *Application) helpMessage() tview.Primitive {
 	tv := tview.NewTextView().SetText(`A: Add; E: Edit; D: Delete; +: Move Up; -: Move Down; Q: Quit`)
 	tv.SetBackgroundColor(tcell.ColorDefault)
 	return tv
+}
+
+func (app *Application) onCancelInput() {
+	app.dismissInputDialog()
+}
+
+func (app *Application) dismissInputDialog() {
+	app.pages.ShowPage("home")
+	app.pages.HidePage("inputDialog")
+	app.term.EnableMouse(false)
+}
+
+func (app *Application) onSaveInput(id string, name, code string) {
+	app.dismissInputDialog()
+	if id != "" {
+		records, _ := defaultStorage.readConfig()
+		for i, record := range records {
+			if record.ID == id {
+				records[i].Name = name
+				records[i].Seed = code
+				break
+			}
+		}
+		_ = defaultStorage.saveConfig(records)
+	} else {
+		records, _ := defaultStorage.readConfig()
+		records = append(records, Entry{
+			ID:       fmt.Sprintf("%d", time.Now().UnixNano()),
+			Name:     name,
+			Seed:     code,
+			Order:    len(records),
+			CreateAt: time.Now(),
+		})
+	}
+}
+
+func newPrimitive(text string) tview.Primitive {
+	view := tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetText(text)
+	view.SetBackgroundColor(tcell.ColorDefault)
+	return view
 }

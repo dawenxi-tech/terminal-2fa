@@ -11,18 +11,16 @@ type Dialog struct {
 	width, height int
 	view          tview.Primitive
 
-	close     func()
-	closeRune rune
-	escClose  bool
+	close    func()
+	escClose bool
 }
 
 func NewDialog(view tview.Primitive, width, height int) *Dialog {
 	dig := &Dialog{
-		width:     width,
-		height:    height,
-		view:      view,
-		escClose:  true,
-		closeRune: 'q',
+		width:    width,
+		height:   height,
+		view:     view,
+		escClose: true,
 	}
 	dig.layout()
 	dig.beginListen()
@@ -36,11 +34,6 @@ func (dig *Dialog) setClose(fm func()) {
 func (dig *Dialog) beginListen() {
 	dig.modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyESC {
-			if dig.close != nil {
-				dig.close()
-			}
-		}
-		if event.Key() == tcell.KeyRune && event.Rune() == dig.closeRune {
 			if dig.close != nil {
 				dig.close()
 			}
