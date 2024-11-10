@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/xlzd/gotp"
 	"math/rand"
 	"time"
 )
@@ -22,4 +23,15 @@ func newId() string {
 		chars[i] = litters[random.Intn(len(litters))]
 	}
 	return string(chars[:])
+}
+
+func isValidTOTPCode(code string) (valid bool) {
+	defer func() {
+		if x := recover(); x != nil {
+			valid = false
+		}
+	}()
+	gotp.NewDefaultTOTP(code).At(time.Now().UnixNano())
+	valid = true
+	return
 }

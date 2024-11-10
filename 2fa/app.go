@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/xlzd/gotp"
 	"log/slog"
 	"strconv"
 	"time"
@@ -194,7 +195,8 @@ func (app *Application) configTable() error {
 		addCell(obj.Name, i+1, col, 500)
 		// code
 		col++
-		addCell("000000", i+1, col, 500)
+		code := gotp.NewDefaultTOTP(obj.Seed).At(time.Now().Unix())
+		addCell(code, i+1, col, 500)
 	}
 	return nil
 }
