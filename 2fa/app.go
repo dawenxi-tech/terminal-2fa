@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"log/slog"
@@ -53,6 +52,9 @@ func (app *Application) layout() error {
 	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune {
 			app.handleKeyPressed(event.Rune())
+		}
+		if event.Key() == tcell.KeyESC {
+			app.term.Stop()
 		}
 		return event
 	})
@@ -183,7 +185,7 @@ func (app *Application) onSaveInput(id string, name, code string) {
 		}
 	} else {
 		records = append(records, Entry{
-			ID:       fmt.Sprintf("%d", time.Now().UnixNano()),
+			ID:       newId(),
 			Name:     name,
 			Seed:     code,
 			Order:    len(records),
