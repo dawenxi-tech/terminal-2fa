@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/dim13/otpauth/migration"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/xlzd/gotp"
@@ -18,6 +19,7 @@ type Application struct {
 	manual *tview.TextView
 
 	inputDialog   *InputDialog
+	importDialog  *ImportDialog
 	confirmDialog *tview.Modal
 }
 
@@ -28,9 +30,12 @@ func newApplication() *Application {
 		pages:         tview.NewPages(),
 		inputDialog:   newInputDialog(""),
 		confirmDialog: tview.NewModal(),
+		importDialog:  newImportDialog(),
 	}
 	app.inputDialog.onCancel = app.onCancelInput
 	app.inputDialog.onSubmit = app.onSaveInput
+	app.importDialog.onCancel = app.onCancelImport
+	app.importDialog.onSubmit = app.onSubmitImport
 	return app
 }
 
@@ -66,6 +71,7 @@ func (app *Application) layout() error {
 	page.AddPage("home", flex, true, true)
 	page.AddPage("inputDialog", app.inputDialog.getModal(), true, false)
 	page.AddPage("deleteDialog", app.confirmDialog, true, false)
+	page.AddPage("importDialog", app.importDialog.getModal(), true, false)
 
 	app.term.SetRoot(page, true)
 	app.term.SetFocus(page)
@@ -125,6 +131,11 @@ func (app *Application) handleKeyPressed(r rune) {
 		app.table.Select(row+2, 0)
 	case 'd':
 		app.showDeleteDialog()
+	case 'i':
+		// import
+		app.importDialog.clear()
+		app.pages.ShowPage("importDialog")
+		app.term.EnableMouse(true)
 	}
 }
 
@@ -258,6 +269,38 @@ func (app *Application) onSaveInput(id string, name, code string) {
 	}
 	_ = defaultStorage.saveConfig(records)
 	app.reloadTable()
+}
+
+func (app *Application) onCancelImport() {
+	app.pages.HidePage("importDialog")
+	app.term.EnableMouse(false)
+}
+
+func (app *Application) onSubmitImport(uri string) {
+	payload, err := migration.UnmarshalURL(uri)
+	if err != nil {
+		slog.With(slog.String("err", err.Error())).Error("error to unmarshal url")
+		return
+	}
+	if len(payload.OtpParameters) == 0 {
+		return
+	}
+	records, _ := defaultStorage.readConfig()
+	for _, item := range payload.OtpParameters {
+		if !isValidTOTPCode(item.SecretString()) {
+			continue
+		}
+		records = append(records, Entry{
+			ID:       newId(),
+			Name:     item.Name,
+			Seed:     item.SecretString(),
+			Order:    len(records),
+			CreateAt: time.Now(),
+		})
+	}
+	_ = defaultStorage.saveConfig(records)
+	app.reloadTable()
+	app.pages.HidePage("importDialog")
 }
 
 func newPrimitive(text string) tview.Primitive {
