@@ -33,7 +33,7 @@ func (s *Storage) init() error {
 	return nil
 }
 
-func (s *Storage) readConfig() ([]Entry, error) {
+func (s *Storage) LoadRecords() ([]Entry, error) {
 	data, err := os.ReadFile(s.configPath)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -51,7 +51,7 @@ func (s *Storage) readConfig() ([]Entry, error) {
 	return objs, nil
 }
 
-func (s *Storage) saveConfig(objs []Entry) error {
+func (s *Storage) saveRecords(objs []Entry) error {
 	data, err := json.Marshal(objs)
 	if err != nil {
 		slog.With(slog.String("err", err.Error())).Error("error to marshal entry")
@@ -65,17 +65,36 @@ func (s *Storage) saveConfig(objs []Entry) error {
 	return nil
 }
 
+func (s *Storage) Get(id int, name string) (Entry, error) {
+	records, err := s.LoadRecords()
+	if err != nil {
+		return Entry{}, err
+	}
+	if id >= 0 && id < len(records) {
+		return records[id], nil
+	}
+	if name != "" {
+		idx := slices.IndexFunc(records, func(r Entry) bool {
+			return r.Name == name
+		})
+		if idx >= 0 {
+			return records[idx], nil
+		}
+	}
+	return Entry{}, errors.New("not found")
+}
+
 func (s *Storage) SaveEntry(entry Entry) error {
-	records, err := s.readConfig()
+	records, err := s.LoadRecords()
 	if err != nil {
 		return err
 	}
 	records = append(records, entry)
-	return s.saveConfig(records)
+	return s.saveRecords(records)
 }
 
 func (s *Storage) DeleteRecord(id int, name string) error {
-	records, err := s.readConfig()
+	records, err := s.LoadRecords()
 	if err != nil {
 		return err
 	}
@@ -88,11 +107,11 @@ func (s *Storage) DeleteRecord(id int, name string) error {
 	} else {
 		return errors.New("id or name is required")
 	}
-	return s.saveConfig(records)
+	return s.saveRecords(records)
 }
 
 func (s *Storage) Update(id int, name string, secret string) error {
-	records, err := s.readConfig()
+	records, err := s.LoadRecords()
 	if err != nil {
 		return err
 	}
@@ -104,11 +123,11 @@ func (s *Storage) Update(id int, name string, secret string) error {
 			records[id].Secret = secret
 		}
 	}
-	return s.saveConfig(records)
+	return s.saveRecords(records)
 }
 
 func (s *Storage) Import(uri string) error {
-	records, err := s.readConfig()
+	records, err := s.LoadRecords()
 	if err != nil {
 		return err
 	}
@@ -124,14 +143,19 @@ func (s *Storage) Import(uri string) error {
 			CreateAt: time.Now(),
 		})
 	}
-	return s.saveConfig(records)
+	return s.saveRecords(records)
 }
 
-func (s *Storage) Move(id int, offset int) error {
-	records, err := s.readConfig()
+func (s *Storage) Move(id int, name string, offset int) error {
+	records, err := s.LoadRecords()
 	if err != nil {
 		return err
 	}
+	if id < 0 {
+		id = slices.IndexFunc(records, func(r Entry) bool {
+			return r.Name == name
+		})
+	}
 	records = sliceMoveElement(records, id, offset)
-	return s.saveConfig(records)
+	return s.saveRecords(records)
 }

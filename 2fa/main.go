@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/xlzd/gotp"
 	"log/slog"
 	"os"
 	"strconv"
@@ -10,10 +9,11 @@ import (
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/xlzd/gotp"
 )
 
 func main() {
-	fmt.Println(os.Args)
+	//fmt.Println(os.Args)
 	err := defaultStorage.init()
 	if err != nil {
 		slog.With(slog.String("err", err.Error())).Error("error to init storage")
@@ -49,7 +49,7 @@ func displayConfigTermUI() {
 }
 
 func display2FA() {
-	objs, err := defaultStorage.readConfig()
+	objs, err := defaultStorage.LoadRecords()
 	if err != nil {
 		slog.With(slog.String("err", err.Error())).Error("error to read configure")
 		os.Exit(1)

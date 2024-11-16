@@ -54,7 +54,7 @@ func (add addCommand) exec() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println("success add 2fa")
+	fmt.Println("success add 2fa", add.name)
 }
 
 type deleteCommand struct {
@@ -76,11 +76,13 @@ func newDeleteCommand(args []string) deleteCommand {
 }
 
 func (d deleteCommand) exec() {
+	entry, _ := defaultStorage.Get(d.id-1, d.name)
 	err := defaultStorage.DeleteRecord(d.id-1, d.name)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	fmt.Println("success delete 2fa", entry.Name)
 }
 
 type editCommand struct {
@@ -104,11 +106,13 @@ func newEditCommand(args []string) editCommand {
 }
 
 func (e editCommand) exec() {
+	entry, _ := defaultStorage.Get(e.id-1, e.name)
 	err := defaultStorage.Update(e.id-1, e.name, e.secret)
 	if err != nil {
 		fmt.Println("error saving config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("success edit 2fa", entry.Name)
 }
 
 type importCommand struct {
@@ -133,10 +137,12 @@ func (i importCommand) exec() {
 		fmt.Println("error saving config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("success import 2fa")
 }
 
 type moveCommand struct {
 	id     int
+	name   string
 	offset int
 }
 
@@ -144,6 +150,7 @@ func newMoveCommand(args []string) moveCommand {
 	mc := moveCommand{}
 	cmd := flag.NewFlagSet(args[0], flag.ExitOnError)
 	cmd.IntVar(&mc.id, "id", 0, "id")
+	cmd.StringVar(&mc.name, "name", "", "the name of 2fa")
 	cmd.IntVar(&mc.offset, "offset", 0, "offset")
 	err := cmd.Parse(args[1:])
 	if err != nil {
@@ -154,11 +161,13 @@ func newMoveCommand(args []string) moveCommand {
 }
 
 func (m moveCommand) exec() {
-	err := defaultStorage.Move(m.id-1, m.offset)
+	entry, _ := defaultStorage.Get(m.id-1, m.name)
+	err := defaultStorage.Move(m.id-1, m.name, m.offset)
 	if err != nil {
 		fmt.Println("error saving config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("success move 2fa", entry.Name)
 }
 
 type listCommand struct{}
@@ -169,7 +178,7 @@ func newListCommand(_ []string) listCommand {
 }
 
 func (l listCommand) exec() {
-	records, err := defaultStorage.readConfig()
+	records, err := defaultStorage.LoadRecords()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

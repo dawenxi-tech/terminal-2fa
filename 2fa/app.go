@@ -95,7 +95,7 @@ func (app *Application) handleKeyPressed(r rune) {
 	case 'e':
 		row, _ := app.table.GetSelection()
 		row = row - 1
-		records, _ := defaultStorage.readConfig()
+		records, _ := defaultStorage.LoadRecords()
 		if row < 0 || row >= len(records) {
 			return
 		}
@@ -109,24 +109,24 @@ func (app *Application) handleKeyPressed(r rune) {
 		// move up
 		row, _ := app.table.GetSelection()
 		row = row - 1
-		records, _ := defaultStorage.readConfig()
+		records, _ := defaultStorage.LoadRecords()
 		if row <= 0 || row >= len(records) {
 			return
 		}
 		//records[row].Order, records[row-1].Order = records[row-1].Order, records[row].Order
-		_ = defaultStorage.saveConfig(records)
+		_ = defaultStorage.saveRecords(records)
 		app.reloadTable()
 		app.table.Select(row, 0)
 	case '-':
 		// move down
 		row, _ := app.table.GetSelection()
 		row = row - 1
-		records, _ := defaultStorage.readConfig()
+		records, _ := defaultStorage.LoadRecords()
 		if row < 0 || row >= len(records)-1 {
 			return
 		}
 		//records[row].Order, records[row+1].Order = records[row+1].Order, records[row].Order
-		_ = defaultStorage.saveConfig(records)
+		_ = defaultStorage.saveRecords(records)
 		app.reloadTable()
 		app.table.Select(row+2, 0)
 	case 'd':
@@ -147,7 +147,7 @@ func (app *Application) reloadTable() {
 func (app *Application) showDeleteDialog() {
 	row, _ := app.table.GetSelection()
 	row = row - 1
-	records, _ := defaultStorage.readConfig()
+	records, _ := defaultStorage.LoadRecords()
 	if row < 0 || row >= len(records) {
 		return
 	}
@@ -160,7 +160,7 @@ func (app *Application) showDeleteDialog() {
 		switch buttonLabel {
 		case "Delete":
 			records = append(records[:row], records[row+1:]...)
-			_ = defaultStorage.saveConfig(records)
+			_ = defaultStorage.saveRecords(records)
 			app.reloadTable()
 			app.table.Select(row, 0)
 		case "Cancel":
@@ -184,7 +184,7 @@ func (app *Application) configTable() error {
 	table.SetSelectedFunc(func(row, column int) {
 		table.GetCell(row, column).SetBackgroundColor(tcell.ColorDefault)
 	})
-	objs, err := defaultStorage.readConfig()
+	objs, err := defaultStorage.LoadRecords()
 	if err != nil {
 		slog.With(slog.String("err", err.Error())).Error("error to read config")
 		return err
@@ -249,7 +249,7 @@ func (app *Application) dismissInputDialog() {
 
 func (app *Application) onSaveInput(id string, name, code string) {
 	app.dismissInputDialog()
-	records, _ := defaultStorage.readConfig()
+	records, _ := defaultStorage.LoadRecords()
 	if id != "" {
 		for i, record := range records {
 			if record.ID == id {
@@ -266,7 +266,7 @@ func (app *Application) onSaveInput(id string, name, code string) {
 			CreateAt: time.Now(),
 		})
 	}
-	_ = defaultStorage.saveConfig(records)
+	_ = defaultStorage.saveRecords(records)
 	app.reloadTable()
 }
 
@@ -284,7 +284,7 @@ func (app *Application) onSubmitImport(uri string) {
 	if len(payload.OtpParameters) == 0 {
 		return
 	}
-	records, _ := defaultStorage.readConfig()
+	records, _ := defaultStorage.LoadRecords()
 	for _, item := range payload.OtpParameters {
 		if !isValidTOTPCode(item.SecretString()) {
 			continue
@@ -296,7 +296,7 @@ func (app *Application) onSubmitImport(uri string) {
 			CreateAt: time.Now(),
 		})
 	}
-	_ = defaultStorage.saveConfig(records)
+	_ = defaultStorage.saveRecords(records)
 	app.reloadTable()
 	app.pages.HidePage("importDialog")
 }
