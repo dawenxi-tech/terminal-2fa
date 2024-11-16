@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/xlzd/gotp"
 	"log/slog"
@@ -14,21 +13,32 @@ import (
 )
 
 func main() {
-	config := flag.Bool("config", false, "show settings ui")
-	flag.Parse()
+	fmt.Println(os.Args)
 	err := defaultStorage.init()
 	if err != nil {
 		slog.With(slog.String("err", err.Error())).Error("error to init storage")
 		os.Exit(1)
 	}
-	if *config {
-		showTermUI()
+	// default show 2FA table
+	if len(os.Args) <= 1 {
+		display2FA()
 		return
 	}
-	display2FA()
+	// show config
+	args := os.Args[1:]
+	switch args[0] {
+	case "config":
+		cmd := newConfigCommand(args)
+		cmd.exec()
+	case "gui":
+		displayConfigTermUI()
+	default:
+		fmt.Println("usage: 2fa [config]")
+		os.Exit(1)
+	}
 }
 
-func showTermUI() {
+func displayConfigTermUI() {
 	app := newApplication()
 	_ = app.layout()
 	err := app.run()
@@ -60,7 +70,7 @@ func render2FA(objs []Entry) string {
 	tw.AppendHeader(table.Row{"#", "Name\t\t", "Code\t\t", "Remain\t"})
 	now := time.Now().Unix()
 	for i, obj := range objs {
-		code := gotp.NewDefaultTOTP(obj.Seed).At(now)
+		code := gotp.NewDefaultTOTP(obj.Secret).At(now)
 		tw.AppendRow(table.Row{strconv.Itoa(i + 1), " " + obj.Name + "\t", " " + code + "\t", fmt.Sprintf(" %ds", 30-time.Now().Second()%30)})
 	}
 	tw.SetCaption("Use -config to manager codes.")

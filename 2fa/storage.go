@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/dim13/otpauth/migration"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
+	"time"
 )
 
 var defaultStorage = Storage{}
@@ -45,9 +48,6 @@ func (s *Storage) readConfig() ([]Entry, error) {
 		slog.With(slog.String("err", err.Error())).Error("error to parse config")
 		return nil, err
 	}
-	sort.Slice(objs, func(i, j int) bool {
-		return objs[i].Order < objs[j].Order
-	})
 	return objs, nil
 }
 
@@ -63,4 +63,75 @@ func (s *Storage) saveConfig(objs []Entry) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Storage) SaveEntry(entry Entry) error {
+	records, err := s.readConfig()
+	if err != nil {
+		return err
+	}
+	records = append(records, entry)
+	return s.saveConfig(records)
+}
+
+func (s *Storage) DeleteRecord(id int, name string) error {
+	records, err := s.readConfig()
+	if err != nil {
+		return err
+	}
+	if id > 0 && id < len(records) {
+		records = append(records[:id], records[id+1:]...)
+	} else if name != "" {
+		records = slices.DeleteFunc(records, func(entry Entry) bool {
+			return entry.Name == name
+		})
+	} else {
+		return errors.New("id or name is required")
+	}
+	return s.saveConfig(records)
+}
+
+func (s *Storage) Update(id int, name string, secret string) error {
+	records, err := s.readConfig()
+	if err != nil {
+		return err
+	}
+	if id > 0 && id < len(records) {
+		if name != "" {
+			records[id].Name = name
+		}
+		if secret != "" {
+			records[id].Secret = secret
+		}
+	}
+	return s.saveConfig(records)
+}
+
+func (s *Storage) Import(uri string) error {
+	records, err := s.readConfig()
+	if err != nil {
+		return err
+	}
+	mig, err := migration.UnmarshalURL(uri)
+	if err != nil {
+		return err
+	}
+	for _, param := range mig.OtpParameters {
+		records = append(records, Entry{
+			ID:       newId(),
+			Name:     param.Name,
+			Secret:   param.SecretString(),
+			CreateAt: time.Now(),
+		})
+	}
+	return s.saveConfig(records)
+}
+
+func (s *Storage) Move(id int, offset int) error {
+	records, err := s.readConfig()
+	if err != nil {
+		return err
+	}
+	records = sliceMoveElement(records, id, offset)
+	return s.saveConfig(records)
 }

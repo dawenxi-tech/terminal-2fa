@@ -99,7 +99,7 @@ func (app *Application) handleKeyPressed(r rune) {
 		if row < 0 || row >= len(records) {
 			return
 		}
-		id, name, code := records[row].ID, records[row].Name, records[row].Seed
+		id, name, code := records[row].ID, records[row].Name, records[row].Secret
 		app.inputDialog.setTitle("EDIT")
 		app.pages.ShowPage("inputDialog")
 		app.term.EnableMouse(true)
@@ -113,7 +113,7 @@ func (app *Application) handleKeyPressed(r rune) {
 		if row <= 0 || row >= len(records) {
 			return
 		}
-		records[row].Order, records[row-1].Order = records[row-1].Order, records[row].Order
+		//records[row].Order, records[row-1].Order = records[row-1].Order, records[row].Order
 		_ = defaultStorage.saveConfig(records)
 		app.reloadTable()
 		app.table.Select(row, 0)
@@ -125,7 +125,7 @@ func (app *Application) handleKeyPressed(r rune) {
 		if row < 0 || row >= len(records)-1 {
 			return
 		}
-		records[row].Order, records[row+1].Order = records[row+1].Order, records[row].Order
+		//records[row].Order, records[row+1].Order = records[row+1].Order, records[row].Order
 		_ = defaultStorage.saveConfig(records)
 		app.reloadTable()
 		app.table.Select(row+2, 0)
@@ -207,7 +207,7 @@ func (app *Application) configTable() error {
 		addCell(obj.Name, i+1, col, 500)
 		// code
 		col++
-		code := gotp.NewDefaultTOTP(obj.Seed).At(time.Now().Unix())
+		code := gotp.NewDefaultTOTP(obj.Secret).At(time.Now().Unix())
 		addCell(code, i+1, col, 500)
 	}
 	return nil
@@ -254,7 +254,7 @@ func (app *Application) onSaveInput(id string, name, code string) {
 		for i, record := range records {
 			if record.ID == id {
 				records[i].Name = name
-				records[i].Seed = code
+				records[i].Secret = code
 				break
 			}
 		}
@@ -262,8 +262,7 @@ func (app *Application) onSaveInput(id string, name, code string) {
 		records = append(records, Entry{
 			ID:       newId(),
 			Name:     name,
-			Seed:     code,
-			Order:    len(records),
+			Secret:   code,
 			CreateAt: time.Now(),
 		})
 	}
@@ -293,8 +292,7 @@ func (app *Application) onSubmitImport(uri string) {
 		records = append(records, Entry{
 			ID:       newId(),
 			Name:     item.Name,
-			Seed:     item.SecretString(),
-			Order:    len(records),
+			Secret:   item.SecretString(),
 			CreateAt: time.Now(),
 		})
 	}
