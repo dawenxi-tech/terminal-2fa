@@ -18,7 +18,7 @@ to use a dynamic key to encrypt secret, try to use next command to install
 go install -ldflags "-X main.encryptKey=`head -c 16 /dev/urandom|base64`"  github.com/dawenxi-tech/terminal-2fa@latest
 ```
 
-*IMPORTANT*: this will use a dynamic and unique key to encrypt secret thus if you uninstall `2fa`, it will never can
+**IMPORTANT**: this will use a dynamic and unique key to encrypt secret thus if you uninstall `2fa`, it will never can
 find back your data.
 
 ## Usage
