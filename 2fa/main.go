@@ -20,21 +20,22 @@ func main() {
 		os.Exit(1)
 	}
 	// default show 2FA table
-	if len(os.Args) <= 1 {
+	if len(os.Args) == 1 {
 		display2FA()
 		return
 	}
 	// show config
 	args := os.Args[1:]
 	switch args[0] {
-	case "config":
-		cmd := newConfigCommand(args)
-		cmd.exec()
+	case "config", "c":
+		doConfigCommand(args)
 	case "gui":
 		displayConfigTermUI()
+	case "help":
+		fallthrough
 	default:
-		fmt.Println("usage: 2fa [config]")
-		os.Exit(1)
+		fmt.Println(strings.TrimSpace(usage))
+		os.Exit(0)
 	}
 }
 

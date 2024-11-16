@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -53,6 +54,7 @@ func (add addCommand) exec() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	fmt.Println("success add 2fa")
 }
 
 type deleteCommand struct {
@@ -74,7 +76,7 @@ func newDeleteCommand(args []string) deleteCommand {
 }
 
 func (d deleteCommand) exec() {
-	err := defaultStorage.DeleteRecord(d.id, d.name)
+	err := defaultStorage.DeleteRecord(d.id-1, d.name)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -92,7 +94,7 @@ func newEditCommand(args []string) editCommand {
 	cmd := flag.NewFlagSet(args[0], flag.ExitOnError)
 	cmd.StringVar(&ec.name, "name", "", "code name")
 	cmd.StringVar(&ec.secret, "secret", "", "secret")
-	cmd.IntVar(&ec.id, "id", -1, "id")
+	cmd.IntVar(&ec.id, "id", 0, "id")
 	err := cmd.Parse(args[1:])
 	if err != nil {
 		fmt.Println(err)
@@ -102,7 +104,7 @@ func newEditCommand(args []string) editCommand {
 }
 
 func (e editCommand) exec() {
-	err := defaultStorage.Update(e.id, e.name, e.secret)
+	err := defaultStorage.Update(e.id-1, e.name, e.secret)
 	if err != nil {
 		fmt.Println("error saving config:", err)
 		os.Exit(1)
@@ -141,7 +143,7 @@ type moveCommand struct {
 func newMoveCommand(args []string) moveCommand {
 	mc := moveCommand{}
 	cmd := flag.NewFlagSet(args[0], flag.ExitOnError)
-	cmd.IntVar(&mc.id, "id", -1, "id")
+	cmd.IntVar(&mc.id, "id", 0, "id")
 	cmd.IntVar(&mc.offset, "offset", 0, "offset")
 	err := cmd.Parse(args[1:])
 	if err != nil {
@@ -152,16 +154,45 @@ func newMoveCommand(args []string) moveCommand {
 }
 
 func (m moveCommand) exec() {
-	err := defaultStorage.Move(m.id, m.offset)
+	err := defaultStorage.Move(m.id-1, m.offset)
 	if err != nil {
 		fmt.Println("error saving config:", err)
 		os.Exit(1)
 	}
 }
 
+type listCommand struct{}
+
+func newListCommand(_ []string) listCommand {
+	lc := listCommand{}
+	return lc
+}
+
+func (l listCommand) exec() {
+	records, err := defaultStorage.readConfig()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	for i, record := range records {
+		fmt.Printf("%2d  %s\n", i+1, record.Name)
+	}
+}
+func doConfigCommand(args []string) {
+	cmd := newConfigCommand(args)
+	cmd.exec()
+}
+
 func newConfigCommand(args []string) *ConfigCommand {
 	cmd := &ConfigCommand{args: args}
-	switch args[0] {
+	//fmt.Println("args:", args)
+	var subCommand string
+	if len(args) >= 2 {
+		subCommand = args[1]
+	}
+	switch subCommand {
+	case "list":
+		cmd.command = newListCommand(args[1:])
 	case "add":
 		cmd.command = newAddCommand(args[1:])
 	case "delete":
@@ -173,8 +204,8 @@ func newConfigCommand(args []string) *ConfigCommand {
 	case "move":
 		cmd.command = newMoveCommand(args[1:])
 	default:
-		fmt.Println("usage: 2fa config [add|delete|edit|import]")
-		os.Exit(1)
+		fmt.Println(strings.TrimSpace(usageConfig))
+		os.Exit(0)
 	}
 	return cmd
 }
