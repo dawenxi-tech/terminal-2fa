@@ -136,6 +136,9 @@ func (s *Storage) Import(uri string) error {
 		return err
 	}
 	for _, param := range mig.OtpParameters {
+		if !isValidTOTPCode(param.SecretString()) {
+			continue
+		}
 		records = append(records, Entry{
 			ID:       newId(),
 			Name:     param.Name,

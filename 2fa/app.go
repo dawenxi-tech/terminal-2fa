@@ -7,6 +7,7 @@ import (
 	"github.com/rivo/tview"
 	"github.com/xlzd/gotp"
 	"log/slog"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -21,6 +22,7 @@ type Application struct {
 	inputDialog   *InputDialog
 	importDialog  *ImportDialog
 	confirmDialog *tview.Modal
+	errorDialog   *tview.Modal
 }
 
 func newApplication() *Application {
@@ -30,19 +32,22 @@ func newApplication() *Application {
 		pages:         tview.NewPages(),
 		inputDialog:   newInputDialog(""),
 		confirmDialog: tview.NewModal(),
+		errorDialog:   tview.NewModal(),
 		importDialog:  newImportDialog(),
 	}
 	app.inputDialog.onCancel = app.onCancelInput
 	app.inputDialog.onSubmit = app.onSaveInput
 	app.importDialog.onCancel = app.onCancelImport
 	app.importDialog.onSubmit = app.onSubmitImport
+	app.confirmDialog.SetTitle("Confirm").SetBorder(true)
+	app.errorDialog.SetTitle("Error").SetBorder(true)
 	return app
 }
 
 func (app *Application) run() error {
 	err := app.term.Run()
 	if err != nil {
-		slog.With(slog.String("err", err.Error())).Error("error to run application")
+		fmt.Println("error to run", err)
 	}
 	return err
 }
@@ -72,6 +77,7 @@ func (app *Application) layout() error {
 	page.AddPage("inputDialog", app.inputDialog.getModal(), true, false)
 	page.AddPage("deleteDialog", app.confirmDialog, true, false)
 	page.AddPage("importDialog", app.importDialog.getModal(), true, false)
+	page.AddPage("errorDialog", app.errorDialog, true, false)
 
 	app.term.SetRoot(page, true)
 	app.term.SetFocus(page)
@@ -109,24 +115,14 @@ func (app *Application) handleKeyPressed(r rune) {
 		// move up
 		row, _ := app.table.GetSelection()
 		row = row - 1
-		records, _ := defaultStorage.LoadRecords()
-		if row <= 0 || row >= len(records) {
-			return
-		}
-		//records[row].Order, records[row-1].Order = records[row-1].Order, records[row].Order
-		_ = defaultStorage.saveRecords(records)
+		_ = defaultStorage.Move(row, "", -1)
 		app.reloadTable()
 		app.table.Select(row, 0)
 	case '-':
 		// move down
 		row, _ := app.table.GetSelection()
 		row = row - 1
-		records, _ := defaultStorage.LoadRecords()
-		if row < 0 || row >= len(records)-1 {
-			return
-		}
-		//records[row].Order, records[row+1].Order = records[row+1].Order, records[row].Order
-		_ = defaultStorage.saveRecords(records)
+		_ = defaultStorage.Move(row, "", 1)
 		app.reloadTable()
 		app.table.Select(row+2, 0)
 	case 'd':
@@ -137,6 +133,18 @@ func (app *Application) handleKeyPressed(r rune) {
 		app.pages.ShowPage("importDialog")
 		app.term.EnableMouse(true)
 	}
+}
+
+func (app *Application) showErrorMessage(msg string) {
+	app.confirmDialog.SetText(msg)
+	app.confirmDialog.
+		ClearButtons().
+		AddButtons([]string{"ok"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		app.pages.HidePage("errorDialog")
+		app.term.EnableMouse(false)
+	})
+	app.pages.ShowPage("errorDialog")
+	app.term.EnableMouse(true)
 }
 
 func (app *Application) reloadTable() {
@@ -159,8 +167,7 @@ func (app *Application) showDeleteDialog() {
 		AddButtons([]string{"Cancel", "Delete"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		switch buttonLabel {
 		case "Delete":
-			records = append(records[:row], records[row+1:]...)
-			_ = defaultStorage.saveRecords(records)
+			_ = defaultStorage.DeleteRecord(row, "")
 			app.reloadTable()
 			app.table.Select(row, 0)
 		case "Cancel":
@@ -249,24 +256,24 @@ func (app *Application) dismissInputDialog() {
 
 func (app *Application) onSaveInput(id string, name, code string) {
 	app.dismissInputDialog()
-	records, _ := defaultStorage.LoadRecords()
+	if !isValidTOTPCode(code) {
+		app.showErrorMessage("invalid 2fa secret")
+		return
+	}
 	if id != "" {
-		for i, record := range records {
-			if record.ID == id {
-				records[i].Name = name
-				records[i].Secret = code
-				break
-			}
-		}
+		records, _ := defaultStorage.LoadRecords()
+		idx := slices.IndexFunc(records, func(entry Entry) bool {
+			return entry.ID == id
+		})
+		_ = defaultStorage.Update(idx, name, code)
 	} else {
-		records = append(records, Entry{
+		_ = defaultStorage.SaveEntry(Entry{
 			ID:       newId(),
 			Name:     name,
 			Secret:   code,
 			CreateAt: time.Now(),
 		})
 	}
-	_ = defaultStorage.saveRecords(records)
 	app.reloadTable()
 }
 
@@ -278,25 +285,13 @@ func (app *Application) onCancelImport() {
 func (app *Application) onSubmitImport(uri string) {
 	payload, err := migration.UnmarshalURL(uri)
 	if err != nil {
-		slog.With(slog.String("err", err.Error())).Error("error to unmarshal url")
+		app.showErrorMessage(uri)
 		return
 	}
 	if len(payload.OtpParameters) == 0 {
 		return
 	}
-	records, _ := defaultStorage.LoadRecords()
-	for _, item := range payload.OtpParameters {
-		if !isValidTOTPCode(item.SecretString()) {
-			continue
-		}
-		records = append(records, Entry{
-			ID:       newId(),
-			Name:     item.Name,
-			Secret:   item.SecretString(),
-			CreateAt: time.Now(),
-		})
-	}
-	_ = defaultStorage.saveRecords(records)
+	_ = defaultStorage.Import(uri)
 	app.reloadTable()
 	app.pages.HidePage("importDialog")
 }
