@@ -47,7 +47,7 @@ func (add addCommand) exec() {
 	err := defaultStorage.SaveEntry(Entry{
 		ID:       newId(),
 		Name:     add.name,
-		Secret:   add.secret,
+		Secret:   newSecret(add.secret),
 		CreateAt: time.Now(),
 	})
 	if err != nil {

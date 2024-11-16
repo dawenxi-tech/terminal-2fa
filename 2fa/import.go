@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/dim13/otpauth/migration"
 	"github.com/rivo/tview"
 )
 
@@ -50,10 +49,6 @@ func (dig *ImportDialog) layoutForm() {
 			dig.onCancel()
 		}
 	}).AddButton("Submit", func() {
-		_, err := migration.UnmarshalURL(dig.value)
-		if err != nil {
-			return
-		}
 		if dig.onSubmit != nil {
 			dig.onSubmit(dig.value)
 		}

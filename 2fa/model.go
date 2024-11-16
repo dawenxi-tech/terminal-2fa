@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/xlzd/gotp"
 	"math/rand"
 	"time"
@@ -9,8 +10,50 @@ import (
 type Entry struct {
 	ID       string    `json:"id"`
 	Name     string    `json:"name,omitempty"`
-	Secret   string    `json:"secret,omitempty"`
+	Secret   *Secret   `json:"secret,omitempty"`
 	CreateAt time.Time `json:"createAt,omitempty"`
+}
+
+type Secret string
+
+func newSecret(msg string) *Secret {
+	s := Secret(msg)
+	return &s
+}
+
+func (s *Secret) Val() string {
+	if s == nil {
+		return ""
+	}
+	return string(*s)
+}
+
+func (s *Secret) MarshalJSON() ([]byte, error) {
+	if s == nil {
+		return []byte(""), nil
+	}
+	msg, err := encrypt(string(*s))
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(msg)
+}
+
+func (s *Secret) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	var str string
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return err
+	}
+	msg, err := decrypt(str)
+	if err != nil {
+		return err
+	}
+	*s = Secret(msg)
+	return nil
 }
 
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))

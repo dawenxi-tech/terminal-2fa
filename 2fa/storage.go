@@ -120,7 +120,7 @@ func (s *Storage) Update(id int, name string, secret string) error {
 			records[id].Name = name
 		}
 		if secret != "" {
-			records[id].Secret = secret
+			records[id].Secret = newSecret(secret)
 		}
 	}
 	return s.saveRecords(records)
@@ -142,7 +142,7 @@ func (s *Storage) Import(uri string) error {
 		records = append(records, Entry{
 			ID:       newId(),
 			Name:     param.Name,
-			Secret:   param.SecretString(),
+			Secret:   newSecret(param.SecretString()),
 			CreateAt: time.Now(),
 		})
 	}

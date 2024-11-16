@@ -82,9 +82,6 @@ func (dialog *InputDialog) layoutForm() {
 		if name == "" || code == "" {
 			return
 		}
-		if !isValidTOTPCode(code) {
-			return
-		}
 		if dialog.onSubmit != nil {
 			dialog.onSubmit(dialog.model.id, name, code)
 		}

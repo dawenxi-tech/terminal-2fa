@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/dim13/otpauth/migration"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/xlzd/gotp"
-	"log/slog"
 	"slices"
 	"strconv"
 	"time"
@@ -105,7 +103,7 @@ func (app *Application) handleKeyPressed(r rune) {
 		if row < 0 || row >= len(records) {
 			return
 		}
-		id, name, code := records[row].ID, records[row].Name, records[row].Secret
+		id, name, code := records[row].ID, records[row].Name, records[row].Secret.Val()
 		app.inputDialog.setTitle("EDIT")
 		app.pages.ShowPage("inputDialog")
 		app.term.EnableMouse(true)
@@ -136,8 +134,8 @@ func (app *Application) handleKeyPressed(r rune) {
 }
 
 func (app *Application) showErrorMessage(msg string) {
-	app.confirmDialog.SetText(msg)
-	app.confirmDialog.
+	app.errorDialog.SetText(msg)
+	app.errorDialog.
 		ClearButtons().
 		AddButtons([]string{"ok"}).SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		app.pages.HidePage("errorDialog")
@@ -193,7 +191,6 @@ func (app *Application) configTable() error {
 	})
 	objs, err := defaultStorage.LoadRecords()
 	if err != nil {
-		slog.With(slog.String("err", err.Error())).Error("error to read config")
 		return err
 	}
 	// build header
@@ -214,7 +211,7 @@ func (app *Application) configTable() error {
 		addCell(obj.Name, i+1, col, 500)
 		// code
 		col++
-		code := gotp.NewDefaultTOTP(obj.Secret).At(time.Now().Unix())
+		code := gotp.NewDefaultTOTP(obj.Secret.Val()).At(time.Now().Unix())
 		addCell(code, i+1, col, 500)
 	}
 	return nil
@@ -255,11 +252,11 @@ func (app *Application) dismissInputDialog() {
 }
 
 func (app *Application) onSaveInput(id string, name, code string) {
-	app.dismissInputDialog()
 	if !isValidTOTPCode(code) {
 		app.showErrorMessage("invalid 2fa secret")
 		return
 	}
+	app.dismissInputDialog()
 	if id != "" {
 		records, _ := defaultStorage.LoadRecords()
 		idx := slices.IndexFunc(records, func(entry Entry) bool {
@@ -270,7 +267,7 @@ func (app *Application) onSaveInput(id string, name, code string) {
 		_ = defaultStorage.SaveEntry(Entry{
 			ID:       newId(),
 			Name:     name,
-			Secret:   code,
+			Secret:   newSecret(code),
 			CreateAt: time.Now(),
 		})
 	}
@@ -283,17 +280,14 @@ func (app *Application) onCancelImport() {
 }
 
 func (app *Application) onSubmitImport(uri string) {
-	payload, err := migration.UnmarshalURL(uri)
+	err := defaultStorage.Import(uri)
 	if err != nil {
-		app.showErrorMessage(uri)
+		app.showErrorMessage(err.Error())
 		return
 	}
-	if len(payload.OtpParameters) == 0 {
-		return
-	}
-	_ = defaultStorage.Import(uri)
 	app.reloadTable()
 	app.pages.HidePage("importDialog")
+	app.term.EnableMouse(false)
 }
 
 func newPrimitive(text string) tview.Primitive {

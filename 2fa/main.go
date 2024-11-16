@@ -71,7 +71,7 @@ func render2FA(objs []Entry) string {
 	tw.AppendHeader(table.Row{"#", "Name\t\t", "Code\t\t", "Remain\t"})
 	now := time.Now().Unix()
 	for i, obj := range objs {
-		code := gotp.NewDefaultTOTP(obj.Secret).At(now)
+		code := gotp.NewDefaultTOTP(obj.Secret.Val()).At(now)
 		tw.AppendRow(table.Row{strconv.Itoa(i + 1), " " + obj.Name + "\t", " " + code + "\t", fmt.Sprintf(" %ds", 30-time.Now().Second()%30)})
 	}
 	tw.SetCaption("Use -config to manager codes.")
