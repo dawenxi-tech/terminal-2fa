@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eiannone/keyboard"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/xlzd/gotp"
 )
@@ -54,6 +55,7 @@ func display2FA() {
 		slog.With(slog.String("err", err.Error())).Error("error to read configure")
 		os.Exit(1)
 	}
+	go pressAnyKey2Exit()
 	for {
 		str := render2FA(objs)
 		_, _ = os.Stdout.WriteString(str)
@@ -76,4 +78,14 @@ func render2FA(objs []Entry) string {
 	}
 	tw.SetCaption("Use -config to manager codes.")
 	return "\n" + tw.Render()
+}
+
+func pressAnyKey2Exit() {
+	_, _, err := keyboard.GetSingleKey()
+	if err != nil {
+		//panic(err)
+		return
+	}
+	//fmt.Printf("You pressed: %q\r\n", char)
+	os.Exit(1)
 }
